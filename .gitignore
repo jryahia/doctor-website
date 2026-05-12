@@ -1,0 +1,13 @@
+node_modules/
+frontend/node_modules/
+frontend/src/
+frontend/public/
+frontend/vite.config.ts
+frontend/tsconfig.json
+frontend/package.json
+frontend/package-lock.json
+frontend/index.html
+__pycache__/
+*.pyc
+.env
+docs/
