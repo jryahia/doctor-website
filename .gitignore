@@ -1,13 +1,37 @@
-node_modules/
-frontend/node_modules/
-frontend/src/
-frontend/public/
-frontend/vite.config.ts
-frontend/tsconfig.json
-frontend/package.json
-frontend/package-lock.json
-frontend/index.html
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
 .env
-docs/
+.env.local
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Database
+*.db
+
+# Docker
+.docker/
+
+# Logs
+*.log
