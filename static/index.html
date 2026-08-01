@@ -1,17 +1,2766 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Studio Medico - Prenotazioni online, consulenze specialistiche" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
-    <title>Studio Medico</title>
-    <script type="module" crossorigin src="/static/assets/index-C2ErIRfK.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CsyedGkg.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Studio Medico - La Tua Salute, La Nostra Missione. Prenota visite specialistiche con i nostri medici a Roma.">
+<meta name="theme-color" content="#0A0F0A">
+<title>Studio Medico | La Tua Salute, La Nostra Missione</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0A0F0A;
+  color: #F0F5F0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+img { max-width:100%; display:block; }
+a { text-decoration:none; color:inherit; }
+ul { list-style:none; }
+input, select, textarea, button { font-family:inherit; font-size:inherit; outline:none; border:none; }
+
+/* ===== PREFERS REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width:8px; }
+::-webkit-scrollbar-track { background:#0A0F0A; }
+::-webkit-scrollbar-thumb { background:#2D7D46; border-radius:4px; }
+::-webkit-scrollbar-thumb:hover { background:#3a9a56; }
+
+/* ===== THREE.JS BACKGROUND ===== */
+#three-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+#three-canvas.loaded { opacity: 1; }
+
+/* ===== PRELOADER ===== */
+#preloader {
+  position: fixed; top:0; left:0;
+  width:100vw; height:100vh;
+  background:#0A0F0A;
+  z-index:10000;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  transition: transform 0.8s cubic-bezier(0.77,0,0.18,1), opacity 0.4s ease;
+}
+#preloader.hidden {
+  transform: translateY(-100%);
+  opacity:0;
+  pointer-events:none;
+}
+.preloader-cross {
+  width: 64px; height: 64px;
+  position: relative;
+  animation: pulseCross 1s ease-in-out infinite;
+}
+.preloader-cross::before,
+.preloader-cross::after {
+  content: '';
+  position: absolute;
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  border-radius: 4px;
+}
+.preloader-cross::before {
+  width: 8px; height: 100%;
+  left: 50%; transform: translateX(-50%);
+}
+.preloader-cross::after {
+  width: 100%; height: 8px;
+  top: 50%; transform: translateY(-50%);
+}
+@keyframes pulseCross {
+  0%, 100% { transform: scale(1); opacity:1; }
+  50% { transform: scale(1.15); opacity:0.8; }
+}
+.preloader-text {
+  margin-top: 24px;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem;
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+  animation: fadeText 1s ease 0.3s both;
+}
+@keyframes fadeText {
+  from { opacity:0; transform:translateY(10px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+  position: fixed; top:0; left:0; right:0;
+  z-index: 1000;
+  padding: 16px 0;
+  transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+.navbar.scrolled {
+  background: rgba(10,15,10,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 0;
+}
+.navbar .container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #F0F5F0;
+  z-index: 1001;
+}
+.navbar-logo .logo-cross {
+  width: 32px; height: 32px;
+  position: relative;
+  display: inline-block;
+}
+.navbar-logo .logo-cross::before,
+.navbar-logo .logo-cross::after {
+  content: '';
+  position: absolute;
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  border-radius: 3px;
+}
+.navbar-logo .logo-cross::before {
+  width: 4px; height: 100%;
+  left: 50%; transform: translateX(-50%);
+}
+.navbar-logo .logo-cross::after {
+  width: 100%; height: 4px;
+  top: 50%; transform: translateY(-50%);
+}
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.navbar-links a {
+  color: rgba(240,245,240,0.7);
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  position: relative;
+  padding: 4px 0;
+}
+.navbar-links a::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0;
+  width: 0; height: 2px;
+  background: linear-gradient(90deg, #2D7D46, #E8803A);
+  transition: width 0.3s ease;
+  border-radius: 1px;
+}
+.navbar-links a:hover { color: #F0F5F0; }
+.navbar-links a:hover::after { width: 100%; }
+.navbar-cta {
+  background: linear-gradient(135deg, #E8803A, #d9732e);
+  color: #fff !important;
+  padding: 10px 24px !important;
+  border-radius: 50px;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  transition: all 0.3s ease !important;
+  border: none;
+  cursor: pointer;
+}
+.navbar-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(232,128,58,0.35);
+  color: #fff !important;
+}
+.navbar-cta::after { display: none !important; }
+.navbar-cta.scrolled-cta {
+  background: linear-gradient(135deg, #2D7D46, #236a3a);
+}
+.navbar-cta.scrolled-cta:hover {
+  box-shadow: 0 8px 32px rgba(45,125,70,0.35);
+}
+
+/* Hamburger */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px; height: 36px;
+  cursor: pointer;
+  z-index: 1001;
+  background: none;
+  border: none;
+  padding: 4px;
+}
+.hamburger span {
+  display: block;
+  width: 100%; height: 2px;
+  background: #F0F5F0;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+.hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Mobile Menu Overlay */
+.mobile-overlay {
+  position: fixed; top:0; left:0;
+  width:100vw; height:100vh;
+  background: rgba(0,0,0,0.6);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.mobile-overlay.active { opacity:1; pointer-events:auto; }
+.mobile-menu {
+  position: fixed; top:0; right:-300px;
+  width: 300px; height:100vh;
+  background: #121812;
+  border-left: 1px solid rgba(255,255,255,0.06);
+  z-index: 1000;
+  padding: 100px 32px 40px;
+  transition: right 0.4s cubic-bezier(0.4,0,0.2,1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mobile-menu.active { right:0; }
+.mobile-menu a {
+  color: rgba(240,245,240,0.7);
+  font-size: 1.1rem;
+  font-weight: 500;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: color 0.3s ease;
+}
+.mobile-menu a:hover { color: #2D7D46; }
+.mobile-menu .mobile-cta {
+  margin-top: 16px;
+  background: linear-gradient(135deg, #E8803A, #d9732e);
+  color: #fff !important;
+  text-align: center;
+  padding: 14px !important;
+  border-radius: 12px;
+  font-weight: 600;
+  border-bottom: none;
+}
+
+/* ===== HERO SECTION ===== */
+.hero {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 120px 24px 80px;
+  overflow: hidden;
+}
+.hero .container {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  width: 100%;
+}
+.hero-content { position: relative; z-index: 2; }
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(45,125,70,0.12);
+  border: 1px solid rgba(45,125,70,0.2);
+  padding: 6px 16px;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  color: #4CAF50;
+  margin-bottom: 24px;
+  letter-spacing: 0.5px;
+}
+.hero-badge .dot {
+  width: 6px; height: 6px;
+  background: #2D7D46;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50% { opacity:0.3; }
+}
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: 20px;
+}
+.hero h1 .gradient-text {
+  background: linear-gradient(135deg, #2D7D46 0%, #E8803A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+  color: rgba(240,245,240,0.65);
+  line-height: 1.7;
+  margin-bottom: 36px;
+  max-width: 520px;
+}
+.hero-ctas {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.hero-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2D7D46, #236a3a);
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+  cursor: pointer;
+  border: none;
+}
+.hero-cta-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(45,125,70,0.35);
+}
+.hero-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: #F0F5F0;
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+  cursor: pointer;
+}
+.hero-cta-secondary:hover {
+  border-color: #2D7D46;
+  background: rgba(45,125,70,0.08);
+  transform: translateY(-3px);
+}
+
+/* Hero right - canvas illustration */
+.hero-visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+#hero-canvas {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  aspect-ratio: 1/1;
+}
+
+/* Scroll indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(240,245,240,0.3);
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  animation: fadeInUp 1s ease 1.5s both;
+}
+.scroll-chevron {
+  width: 24px; height: 24px;
+  border-right: 2px solid rgba(240,245,240,0.3);
+  border-bottom: 2px solid rgba(240,245,240,0.3);
+  transform: rotate(45deg);
+  animation: bounceChevron 2s ease-in-out infinite;
+}
+@keyframes bounceChevron {
+  0%,100% { transform: rotate(45deg) translate(0,0); opacity:0.3; }
+  50% { transform: rotate(45deg) translate(0,6px); opacity:1; }
+}
+@keyframes fadeInUp {
+  from { opacity:0; transform:translate(-50%, 10px); }
+  to { opacity:1; transform:translate(-50%, 0); }
+}
+
+/* ===== STATS BAR ===== */
+.stats-bar {
+  position: relative;
+  z-index: 1;
+  padding: 60px 24px;
+}
+.stats-bar .container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+.stat-card {
+  background: rgba(18,24,18,0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 28px 20px;
+  text-align: center;
+  transition: all 0.4s ease;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(45,125,70,0.2);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+.stat-number {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.stat-label {
+  font-size: 0.85rem;
+  color: #8A9A8A;
+  font-weight: 500;
+}
+
+/* ===== SECTION HEADERS ===== */
+.section-header {
+  text-align: center;
+  margin-bottom: 56px;
+}
+.section-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  color: #F0F5F0;
+  margin-bottom: 12px;
+}
+.section-header .underline {
+  width: 60px; height: 3px;
+  background: linear-gradient(90deg, #2D7D46, #E8803A);
+  border-radius: 2px;
+  margin: 0 auto;
+}
+.section-header p {
+  color: #8A9A8A;
+  font-size: 1rem;
+  margin-top: 12px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===== DOCTORS SECTION ===== */
+.doctors-section {
+  position: relative;
+  z-index: 1;
+  padding: 100px 24px;
+}
+.doctors-section .container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.doctors-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.doctor-card {
+  background: #1A221A;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  padding: 32px 24px 28px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+  opacity: 0;
+  transform: translateY(40px);
+}
+.doctor-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.doctor-card:nth-child(1) { transition-delay: 0s; }
+.doctor-card:nth-child(2) { transition-delay: 0.1s; }
+.doctor-card:nth-child(3) { transition-delay: 0.2s; }
+.doctor-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #2D7D46, #E8803A);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.doctor-card:hover::before { opacity: 1; }
+.doctor-card:hover {
+  transform: translateY(-12px);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+  border-color: rgba(45,125,70,0.2);
+}
+.doctor-card:hover .doc-avatar { transform: scale(1.05); }
+.doctor-card:hover .doctor-name { color: #fff; }
+.doc-avatar-wrapper {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  margin-bottom: 16px;
+  transition: transform 0.4s ease;
+}
+.doc-avatar {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #fff;
+  transition: transform 0.4s ease;
+}
+.doctor-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #F0F5F0;
+  margin-bottom: 2px;
+  transition: color 0.3s ease;
+}
+.doctor-title {
+  font-size: 0.82rem;
+  color: #8A9A8A;
+  margin-bottom: 14px;
+}
+.doc-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.doc-spec-tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.doc-spec-tag.green {
+  background: rgba(45,125,70,0.12);
+  color: #4CAF50;
+  border: 1px solid rgba(45,125,70,0.15);
+}
+.doc-spec-tag.orange {
+  background: rgba(232,128,58,0.1);
+  color: #E8803A;
+  border: 1px solid rgba(232,128,58,0.12);
+}
+.doc-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 0.8rem;
+  color: #8A9A8A;
+  margin-bottom: 20px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.doc-stats span { display:flex; align-items:center; gap:5px; }
+.doc-book-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #2D7D46, #236a3a);
+  color: #fff;
+  padding: 11px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.35s ease;
+}
+.doc-book-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(45,125,70,0.3);
+}
+
+/* ===== SERVICES SECTION ===== */
+.services-section {
+  position: relative;
+  z-index: 1;
+  padding: 100px 24px;
+  background: linear-gradient(180deg, transparent 0%, rgba(18,24,18,0.5) 100%);
+}
+.services-section .container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.service-column {
+  background: #1A221A;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 28px 20px;
+  transform: skewX(-2deg);
+  transition: all 0.4s ease;
+  opacity: 0;
+  transform-origin: center;
+  transform: translateY(40px) skewX(-2deg);
+}
+.service-column.visible {
+  opacity: 1;
+  transform: translateY(0) skewX(-2deg);
+}
+.service-column:nth-child(1) { transition-delay: 0s; }
+.service-column:nth-child(2) { transition-delay: 0.1s; }
+.service-column:nth-child(3) { transition-delay: 0.2s; }
+.service-column:hover {
+  border-color: rgba(45,125,70,0.2);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  transform: translateY(-6px) skewX(-2deg);
+}
+.service-column > * { transform: skewX(2deg); }
+.service-col-header {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #F0F5F0;
+  margin-bottom: 6px;
+}
+.service-col-sub {
+  font-size: 0.78rem;
+  color: #8A9A8A;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.service-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: all 0.5s ease;
+}
+.service-column.visible .service-item.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.service-column.visible .service-item:nth-child(1) { transition-delay: 0.05s; }
+.service-column.visible .service-item:nth-child(2) { transition-delay: 0.1s; }
+.service-column.visible .service-item:nth-child(3) { transition-delay: 0.15s; }
+.service-column.visible .service-item:nth-child(4) { transition-delay: 0.2s; }
+.service-column.visible .service-item:nth-child(5) { transition-delay: 0.25s; }
+.service-column.visible .service-item:nth-child(6) { transition-delay: 0.3s; }
+.service-item-name {
+  font-size: 0.88rem;
+  color: rgba(240,245,240,0.85);
+}
+.service-item-price {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #E8803A;
+}
+
+/* ===== ABOUT SECTION ===== */
+.about-section {
+  position: relative;
+  z-index: 1;
+  padding: 100px 24px;
+}
+.about-section .container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: start;
+}
+.about-left h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  margin-bottom: 24px;
+}
+.about-left h2 .gradient-text {
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.about-quote {
+  position: relative;
+  padding: 32px;
+  background: rgba(26,34,26,0.6);
+  border-left: 3px solid #2D7D46;
+  border-radius: 0 16px 16px 0;
+  margin-bottom: 24px;
+}
+.about-quote::before {
+  content: '"';
+  position: absolute;
+  top: 8px; left: 14px;
+  font-size: 3rem;
+  font-family: 'Playfair Display', serif;
+  color: rgba(45,125,70,0.15);
+  line-height: 1;
+}
+.about-quote p {
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: rgba(240,245,240,0.75);
+  font-style: italic;
+}
+.about-quote .attribution {
+  margin-top: 12px;
+  font-style: normal;
+  font-size: 0.82rem;
+  color: #8A9A8A;
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding-left: 32px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px; top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #2D7D46, #E8803A, transparent);
+  border-radius: 1px;
+}
+.timeline-item {
+  position: relative;
+  padding-bottom: 28px;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: all 0.6s ease;
+}
+.timeline-item.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-dot {
+  position: absolute;
+  left: -28px; top: 4px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #1A221A;
+  border: 2px solid #2D7D46;
+  z-index: 1;
+}
+.timeline-item.visible .timeline-dot {
+  background: #2D7D46;
+  box-shadow: 0 0 12px rgba(45,125,70,0.4);
+}
+.timeline-year {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #E8803A;
+  margin-bottom: 2px;
+}
+.timeline-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #F0F5F0;
+  margin-bottom: 2px;
+}
+.timeline-inst {
+  font-size: 0.8rem;
+  color: #8A9A8A;
+}
+
+/* ===== TESTIMONIALS ===== */
+.testimonials-section {
+  position: relative;
+  z-index: 1;
+  padding: 100px 24px;
+  background: linear-gradient(180deg, rgba(18,24,18,0.3), transparent);
+}
+.testimonials-section .container {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+.testimonial-carousel {
+  position: relative;
+  min-height: 220px;
+}
+.testimonial-slide {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+  transition: all 0.6s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none;
+}
+.testimonial-slide.active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  position: relative;
+}
+.testimonial-quote {
+  position: relative;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: rgba(240,245,240,0.8);
+  font-style: italic;
+  padding: 24px 32px;
+}
+.testimonial-quote::before {
+  content: '"';
+  position: absolute;
+  top: 0; left: 0;
+  font-size: 4rem;
+  font-family: 'Playfair Display', serif;
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 0.8;
+  opacity: 0.3;
+}
+.testimonial-author {
+  margin-top: 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #F0F5F0;
+  font-style: normal;
+}
+.testimonial-role {
+  font-size: 0.8rem;
+  color: #8A9A8A;
+  font-weight: 400;
+  font-style: normal;
+}
+.testimonial-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+.testimonial-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  padding: 0;
+}
+.testimonial-dot.active {
+  background: #2D7D46;
+  box-shadow: 0 0 12px rgba(45,125,70,0.3);
+  width: 28px;
+  border-radius: 5px;
+}
+
+/* ===== APPOINTMENT SECTION ===== */
+.appointment-section {
+  position: relative;
+  z-index: 1;
+  padding: 100px 24px;
+}
+.appointment-section .container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+.appointment-form {
+  background: rgba(18,24,18,0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  padding: 40px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.form-group {
+  margin-bottom: 16px;
+}
+.form-group label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #8A9A8A;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #F0F5F0;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #2D7D46;
+  background: rgba(45,125,70,0.06);
+  box-shadow: 0 0 0 3px rgba(45,125,70,0.1);
+}
+.form-group input::placeholder,
+.form-group textarea::placeholder { color: rgba(138,154,138,0.4); }
+.form-group select { cursor: pointer; }
+.form-group select option { background: #1A221A; color: #F0F5F0; }
+.form-group textarea { min-height: 100px; resize: vertical; }
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #2D7D46, #236a3a);
+  color: #fff;
+  padding: 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.35s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(45,125,70,0.3);
+}
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.submit-btn .spinner {
+  width: 20px; height: 20px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: none;
+}
+.submit-btn.loading .spinner { display: inline-block; }
+.submit-btn.loading .btn-text { display: none; }
+
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Success message */
+.form-success {
+  display: none;
+  text-align: center;
+  padding: 40px 20px;
+  animation: successPop 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+.form-success.show { display: block; }
+.form-success .check-circle {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(45,125,70,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+.form-success .check-circle svg { width: 32px; height: 32px; stroke: #2D7D46; }
+.form-success h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem;
+  color: #F0F5F0;
+  margin-bottom: 8px;
+}
+.form-success p { color: #8A9A8A; font-size: 0.9rem; }
+@keyframes successPop {
+  0% { opacity:0; transform:scale(0.9); }
+  50% { transform:scale(1.02); }
+  100% { opacity:1; transform:scale(1); }
+}
+
+/* ===== CONTACT SECTION ===== */
+.contact-section {
+  position: relative;
+  z-index: 1;
+  padding: 100px 24px;
+  background: linear-gradient(180deg, transparent, rgba(18,24,18,0.5));
+}
+.contact-section .container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+}
+.contact-info h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-bottom: 28px;
+}
+.contact-info h2 .gradient-text {
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.contact-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.contact-icon {
+  width: 40px; height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  background: rgba(45,125,70,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2D7D46;
+}
+.contact-icon svg { width: 18px; height: 18px; }
+.contact-detail-label {
+  font-size: 0.78rem;
+  color: #8A9A8A;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.contact-detail-value {
+  font-size: 0.92rem;
+  color: #F0F5F0;
+  line-height: 1.5;
+}
+.contact-detail-value a { color: #4CAF50; transition: color 0.3s; }
+.contact-detail-value a:hover { color: #E8803A; }
+
+.map-container {
+  margin-top: 24px;
+  height: 320px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(45,125,70,0.2);
+}
+.map-container .leaflet-popup-content h4 {
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+  color: #1A221A;
+}
+.map-container .leaflet-popup-content p {
+  font-size: 0.8rem;
+  color: #555;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.doctor-locations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+.location-card {
+  flex: 1;
+  min-width: 180px;
+  background: rgba(26,34,26,0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.location-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(26,34,26,0.8);
+}
+.location-card .location-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.location-card .location-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #F0F5F0;
+  display: flex;
+  align-items: center;
+}
+.location-card .location-addr {
+  font-size: 0.78rem;
+  color: #8A9A8A;
+  margin-top: 4px;
+  padding-left: 18px;
+}
+
+.contact-form-card {
+  background: #1A221A;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  padding: 32px;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, #0A0F0A, #050805);
+  border-top: 1px solid rgba(255,255,255,0.04);
+  padding: 60px 24px 0;
+}
+.footer .container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 48px;
+  padding-bottom: 40px;
+}
+.footer-col h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  color: #F0F5F0;
+  margin-bottom: 16px;
+}
+.footer-col p, .footer-col li {
+  font-size: 0.85rem;
+  color: #8A9A8A;
+  line-height: 1.8;
+}
+.footer-col a {
+  color: #8A9A8A;
+  transition: color 0.3s;
+  display: block;
+  padding: 2px 0;
+}
+.footer-col a:hover { color: #4CAF50; }
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.footer-brand .mini-cross {
+  width: 24px; height: 24px;
+  position: relative;
+  display: inline-block;
+}
+.footer-brand .mini-cross::before,
+.footer-brand .mini-cross::after {
+  content: '';
+  position: absolute;
+  background: linear-gradient(135deg, #2D7D46, #E8803A);
+  border-radius: 2px;
+}
+.footer-brand .mini-cross::before {
+  width: 3px; height: 100%;
+  left: 50%; transform: translateX(-50%);
+}
+.footer-brand .mini-cross::after {
+  width: 100%; height: 3px;
+  top: 50%; transform: translateY(-50%);
+}
+.footer-brand span {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  color: #F0F5F0;
+}
+.footer-desc {
+  font-size: 0.85rem !important;
+  margin-bottom: 16px;
+}
+.footer-socials {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.footer-socials a {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.footer-socials a:hover {
+  background: rgba(45,125,70,0.15);
+  border-color: #2D7D46;
+  transform: translateY(-3px);
+}
+.footer-socials a svg {
+  width: 18px; height: 18px;
+  fill: #8A9A8A;
+  transition: fill 0.3s;
+}
+.footer-socials a:hover svg { fill: #4CAF50; }
+
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.04);
+  padding: 20px 24px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: rgba(138,154,138,0.5);
+}
+.footer-bottom .container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0;
+}
+.footer-bottom a { color: rgba(138,154,138,0.6); }
+.footer-bottom a:hover { color: #4CAF50; }
+
+/* ===== SKELETON LOADERS ===== */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton.card {
+  height: 340px;
+  border-radius: 20px;
+}
+.skeleton.text { height: 14px; margin-bottom: 10px; border-radius: 4px; }
+.skeleton.text-sm { height: 10px; width: 60%; margin-bottom: 8px; border-radius: 4px; }
+.skeleton.avatar { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 16px; }
+.skeleton.tag { height: 22px; width: 80px; border-radius: 999px; display:inline-block; margin: 2px; }
+.skeleton.btn { height: 38px; border-radius: 10px; margin-top: 16px; }
+
+.error-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #8A9A8A;
+}
+.error-state svg { width: 40px; height: 40px; stroke: #E8803A; margin-bottom: 12px; }
+.error-state p { font-size: 0.9rem; }
+.error-state .retry-btn {
+  margin-top: 12px;
+  background: rgba(232,128,58,0.1);
+  border: 1px solid rgba(232,128,58,0.2);
+  color: #E8803A;
+  padding: 8px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+}
+.error-state .retry-btn:hover {
+  background: rgba(232,128,58,0.2);
+}
+
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .hero .container { grid-template-columns: 1fr; gap: 40px; text-align:center; }
+  .hero-subtitle { margin: 0 auto 36px; }
+  .hero-ctas { justify-content: center; }
+  .about-section .container { grid-template-columns: 1fr; gap: 40px; }
+  .contact-section .container { grid-template-columns: 1fr; }
+  .footer .container { grid-template-columns: 1fr 1fr; }
+  .hero-visual { min-height: 300px; }
+}
+
+@media (max-width: 768px) {
+  .navbar-links { display: none; }
+  .navbar-cta { display: none; }
+  .hamburger { display: flex; }
+  .navbar.scrolled .navbar-cta { display: none; }
+
+  .hero { padding: 100px 20px 60px; }
+
+  .stats-bar .container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .stat-card { padding: 20px 14px; }
+  .stat-number { font-size: 1.8rem; }
+
+  .doctors-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+  .services-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+  .service-column { transform: none; }
+  .service-column:hover { transform: translateY(-6px); }
+  .service-column > * { transform: none; }
+
+  .form-row { grid-template-columns: 1fr; }
+
+  .appointment-form { padding: 24px; }
+  .contact-form-card { padding: 24px; }
+
+  .footer .container { grid-template-columns: 1fr; gap: 32px; }
+  .footer-bottom .container { flex-direction: column; gap: 8px; }
+  .footer-bottom { font-size: 0.72rem; }
+
+  .hero-visual { min-height: 250px; }
+  #hero-canvas { max-width: 350px; }
+}
+
+@media (max-width: 480px) {
+  .hero { padding: 90px 16px 40px; }
+  .hero-ctas { flex-direction: column; align-items: center; }
+  .hero-cta-primary, .hero-cta-secondary { width: 100%; justify-content: center; }
+  .stats-bar .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-card { padding: 16px 10px; }
+  .stat-number { font-size: 1.5rem; }
+  .stat-label { font-size: 0.75rem; }
+  .appointment-form { padding: 20px 16px; }
+  .contact-form-card { padding: 20px; }
+  .testimonial-quote { padding: 16px; font-size: 0.95rem; }
+  .section-header { margin-bottom: 36px; }
+  .doctors-section, .services-section, .about-section, .testimonials-section,
+  .appointment-section, .contact-section, .stats-bar { padding: 60px 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- PRELOADER -->
+<div id="preloader">
+  <div class="preloader-cross"></div>
+  <div class="preloader-text">Studio Medico</div>
+</div>
+
+<!-- THREE.JS BACKGROUND CANVAS -->
+<div id="three-canvas"></div>
+
+<!-- NAVBAR -->
+<nav class="navbar" id="navbar">
+  <div class="container">
+    <a href="#hero" class="navbar-logo">
+      <span class="logo-cross"></span>
+      Studio Medico
+    </a>
+    <div class="navbar-links" id="navLinks">
+      <a href="#hero">Home</a>
+      <a href="#doctors">Medici</a>
+      <a href="#services">Servizi</a>
+      <a href="#about">Chi Siamo</a>
+      <a href="#contact">Contatti</a>
+      <a href="#appointment" class="navbar-cta">Prenota Visita</a>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mobile-overlay" id="mobileOverlay"></div>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#hero">Home</a>
+  <a href="#doctors">Medici</a>
+  <a href="#services">Servizi</a>
+  <a href="#about">Chi Siamo</a>
+  <a href="#contact">Contatti</a>
+  <a href="#appointment" class="mobile-cta">Prenota Visita</a>
+</div>
+
+<!-- HERO SECTION -->
+<section class="hero" id="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        Dal 2004 al tuo servizio
+      </div>
+      <h1>
+        La Tua Salute,<br>
+        <span class="gradient-text">La Nostra Missione</span>
+      </h1>
+      <p class="hero-subtitle">
+        Da oltre 20 anni al servizio della salute con un team di specialisti dedicati.
+        Cura, professionalità e innovazione per il tuo benessere.
+      </p>
+      <div class="hero-ctas">
+        <button class="hero-cta-primary" onclick="document.getElementById('appointment').scrollIntoView({behavior:'smooth'})">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Prenota una Visita
+        </button>
+        <button class="hero-cta-secondary" onclick="document.getElementById('doctors').scrollIntoView({behavior:'smooth'})">
+          Scopri i Nostri Medici
+        </button>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <canvas id="hero-canvas"></canvas>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    Scopri di più
+    <div class="scroll-chevron"></div>
+  </div>
+</section>
+
+<!-- STATS BAR -->
+<section class="stats-bar" id="stats">
+  <div class="container">
+    <div class="stat-card">
+      <div class="stat-number"><span class="counter" data-target="20">0</span>+</div>
+      <div class="stat-label">Anni di Esperienza</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><span class="counter" data-target="13000">0</span>+</div>
+      <div class="stat-label">Pazienti Curati</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><span class="counter" data-target="3">0</span></div>
+      <div class="stat-label">Medici Specialisti</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><span class="counter" data-target="98">0</span>%</div>
+      <div class="stat-label">Soddisfazione</div>
+    </div>
+  </div>
+</section>
+
+<!-- DOCTORS SECTION -->
+<section class="doctors-section" id="doctors">
+  <div class="container">
+    <div class="section-header">
+      <h2>I Nostri Medici</h2>
+      <div class="underline"></div>
+      <p>Professionisti qualificati al servizio della tua salute</p>
+    </div>
+    <div class="doctors-grid" id="doctorsGrid">
+      <!-- Skeleton loader injected by JS, replaced by real cards -->
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES SECTION -->
+<section class="services-section" id="services">
+  <div class="container">
+    <div class="section-header">
+      <h2>I Nostri Servizi</h2>
+      <div class="underline"></div>
+      <p>Prestazioni sanitarie di alta qualità per ogni esigenza</p>
+    </div>
+    <div class="services-grid" id="servicesGrid">
+      <!-- Loaded from API -->
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT SECTION -->
+<section class="about-section" id="about">
+  <div class="container">
+    <div class="about-left">
+      <h2><span class="gradient-text">Chi Siamo</span></h2>
+      <div class="about-quote">
+        <p>Da oltre vent'anni, il nostro studio medico rappresenta un punto di riferimento per la salute e il benessere della comunità. Ogni giorno, con dedizione e professionalità, ci prendiamo cura dei nostri pazienti, offrendo un'ampia gamma di servizi specialistici in un ambiente accogliente e all'avanguardia.</p>
+        <div class="attribution">— Il Team di Studio Medico</div>
+      </div>
+    </div>
+    <div class="about-right">
+      <div class="section-header" style="text-align:left; margin-bottom:24px;">
+        <h2 style="font-size:1.4rem;">Il Nostro Percorso</h2>
+        <div class="underline" style="margin:0;"></div>
+      </div>
+      <div class="timeline" id="aboutTimeline">
+        <!-- Loaded from API -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS SECTION -->
+<section class="testimonials-section" id="testimonials">
+  <div class="container">
+    <div class="section-header">
+      <h2>Cosa Dicono di Noi</h2>
+      <div class="underline"></div>
+    </div>
+    <div class="testimonial-carousel" id="testimonialCarousel">
+      <div class="testimonial-slide active">
+        <div class="testimonial-quote">
+          Ho trovato professionalità e umanità in ogni visita. Il dottor Rossi è stato fondamentale per la diagnosi precoce di un problema cardiaco. Consiglio vivamente questo studio a chiunque cerchi eccellenza.
+        </div>
+        <div class="testimonial-author">
+          Maria Grazia F.
+          <div class="testimonial-role">Paziente di Dr. Rossi</div>
+        </div>
+      </div>
+      <div class="testimonial-slide">
+        <div class="testimonial-quote">
+          Portiamo nostro figlio dalla dottoressa Bianchi da quando era piccolo. La sua dolcezza e competenza in pediatria ci hanno sempre messo a nostro agio. La dermatologia estetica è un valore aggiunto straordinario.
+        </div>
+        <div class="testimonial-author">
+          Antonio e Sara M.
+          <div class="testimonial-role">Genitori pazienti Dr.ssa Bianchi</div>
+        </div>
+      </div>
+      <div class="testimonial-slide">
+        <div class="testimonial-quote">
+          Dopo un infortunio sportivo, il dottor Verdi mi ha seguito con un percorso riabilitativo eccellente. In tre mesi sono tornato a correre. Struttura moderna, personale preparato, risultati eccezionali.
+        </div>
+        <div class="testimonial-author">
+          Luca R.
+          <div class="testimonial-role">Paziente di Dr. Verdi</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-dots" id="testimonialDots">
+      <button class="testimonial-dot active" data-index="0" aria-label="Testimonianza 1"></button>
+      <button class="testimonial-dot" data-index="1" aria-label="Testimonianza 2"></button>
+      <button class="testimonial-dot" data-index="2" aria-label="Testimonianza 3"></button>
+    </div>
+  </div>
+</section>
+
+<!-- APPOINTMENT SECTION -->
+<section class="appointment-section" id="appointment">
+  <div class="container">
+    <div class="section-header">
+      <h2>Prenota la Tua Visita</h2>
+      <div class="underline"></div>
+      <p>Compila il modulo per richiedere un appuntamento</p>
+    </div>
+    <div class="appointment-form" id="appointmentForm">
+      <form id="bookingForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookDoctor">Medico</label>
+            <select id="bookDoctor" required>
+              <option value="">Seleziona un medico</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="bookService">Servizio</label>
+            <select id="bookService" required>
+              <option value="">Seleziona un servizio</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookDate">Data</label>
+            <input type="date" id="bookDate" required>
+          </div>
+          <div class="form-group">
+            <label for="bookTime">Orario</label>
+            <select id="bookTime" required>
+              <option value="">Seleziona orario</option>
+              <option value="09:00">09:00</option><option value="09:30">09:30</option>
+              <option value="10:00">10:00</option><option value="10:30">10:30</option>
+              <option value="11:00">11:00</option><option value="11:30">11:30</option>
+              <option value="12:00">12:00</option><option value="12:30">12:30</option>
+              <option value="15:00">15:00</option><option value="15:30">15:30</option>
+              <option value="16:00">16:00</option><option value="16:30">16:30</option>
+              <option value="17:00">17:00</option><option value="17:30">17:30</option>
+              <option value="18:00">18:00</option><option value="18:30">18:30</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookName">Nome e Cognome</label>
+            <input type="text" id="bookName" placeholder="Il tuo nome" required>
+          </div>
+          <div class="form-group">
+            <label for="bookEmail">Email</label>
+            <input type="email" id="bookEmail" placeholder="La tua email" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookPhone">Telefono</label>
+            <input type="tel" id="bookPhone" placeholder="Il tuo telefono" required>
+          </div>
+          <div class="form-group">
+            <label for="bookNotes">Note</label>
+            <input type="text" id="bookNotes" placeholder="Eventuali note">
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="bookingSubmit">
+          <span class="spinner"></span>
+          <span class="btn-text">Prenota Appuntamento</span>
+        </button>
+      </form>
+      <div class="form-success" id="bookingSuccess">
+        <div class="check-circle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Prenotazione Confermata!</h3>
+        <p>Riceverai una conferma via email con i dettagli dell'appuntamento.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT SECTION -->
+<section class="contact-section" id="contact">
+  <div class="container">
+    <div class="contact-info">
+      <h2><span class="gradient-text">Contattaci</span></h2>
+
+      <!-- Clinic main address -->
+      <div class="contact-detail">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div>
+          <div class="contact-detail-label">Sede Centrale</div>
+          <div class="contact-detail-value">Via della Salute 42, 00100 Roma</div>
+        </div>
+      </div>
+
+      <!-- Three doctor locations -->
+      <div class="contact-detail">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div>
+          <div class="contact-detail-label">Ambulatori</div>
+          <div class="contact-detail-value">
+            <strong>Dr. Rossi:</strong> Via Roma 1, Roma<br>
+            <strong>Dr.ssa Bianchi:</strong> Via Garibaldi 45, Roma<br>
+            <strong>Dr. Verdi:</strong> Via Nazionale 120, Roma
+          </div>
+        </div>
+      </div>
+
+      <div class="contact-detail">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </div>
+        <div>
+          <div class="contact-detail-label">Telefono</div>
+          <div class="contact-detail-value"><a href="tel:+390****5678">+39 06 1234 5678</a></div>
+        </div>
+      </div>
+      <div class="contact-detail">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div>
+          <div class="contact-detail-label">Email</div>
+          <div class="contact-detail-value"><a href="mailto:info@studiomedico.it">info@studiomedico.it</a></div>
+        </div>
+      </div>
+      <div class="contact-detail">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div>
+          <div class="contact-detail-label">Orari</div>
+          <div class="contact-detail-value">
+            Lun-Ven: 09:00 - 19:00<br>
+            Sab: 09:00 - 13:00
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaflet Map -->
+      <div class="map-container" id="doctorMap"></div>
+
+      <!-- Doctor location cards -->
+      <div class="doctor-locations" id="doctorLocations">
+        <div class="location-card" data-doctor="0" onclick="focusDoctor(0)">
+          <div class="location-name">
+            <span class="location-dot" style="background:#2563eb"></span>
+            Dr. Rossi
+          </div>
+          <div class="location-addr">Via Roma 1, Roma</div>
+        </div>
+        <div class="location-card" data-doctor="1" onclick="focusDoctor(1)">
+          <div class="location-name">
+            <span class="location-dot" style="background:#ec4899"></span>
+            Dr.ssa Bianchi
+          </div>
+          <div class="location-addr">Via Garibaldi 45, Roma</div>
+        </div>
+        <div class="location-card" data-doctor="2" onclick="focusDoctor(2)">
+          <div class="location-name">
+            <span class="location-dot" style="background:#059669"></span>
+            Dr. Verdi
+          </div>
+          <div class="location-addr">Via Nazionale 120, Roma</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-form-card">
+      <form id="contactForm">
+        <div class="form-group">
+          <label for="contactName">Nome e Cognome</label>
+          <input type="text" id="contactName" placeholder="Il tuo nome" required>
+        </div>
+        <div class="form-group">
+          <label for="contactEmail">Email</label>
+          <input type="email" id="contactEmail" placeholder="La tua email" required>
+        </div>
+        <div class="form-group">
+          <label for="contactSubject">Oggetto</label>
+          <input type="text" id="contactSubject" placeholder="Oggetto del messaggio">
+        </div>
+        <div class="form-group">
+          <label for="contactMessage">Messaggio</label>
+          <textarea id="contactMessage" placeholder="Scrivi il tuo messaggio..." required></textarea>
+        </div>
+        <button type="submit" class="submit-btn" id="contactSubmit">
+          <span class="spinner"></span>
+          <span class="btn-text">Invia Messaggio</span>
+        </button>
+      </form>
+      <div class="form-success" id="contactSuccess">
+        <div class="check-circle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Messaggio Inviato!</h3>
+        <p>Ti risponderemo al più presto.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-col">
+      <div class="footer-brand">
+        <span class="mini-cross"></span>
+        <span>Studio Medico</span>
+      </div>
+      <p class="footer-desc">
+        Da oltre 20 anni al servizio della salute con un team di specialisti dedicati.
+        Cura, professionalità e innovazione per il tuo benessere.
+      </p>
+      <div class="footer-socials">
+        <a href="#" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+        </a>
+        <a href="#" aria-label="Facebook">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        </a>
+        <a href="#" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Link Rapidi</h4>
+      <a href="#hero">Home</a>
+      <a href="#doctors">I Nostri Medici</a>
+      <a href="#services">Servizi</a>
+      <a href="#about">Chi Siamo</a>
+      <a href="#appointment">Prenota Visita</a>
+      <a href="#contact">Contatti</a>
+    </div>
+    <div class="footer-col">
+      <h4>Orari di Apertura</h4>
+      <p>Lunedì – Venerdì</p>
+      <p style="margin-bottom:8px;">09:00 – 13:00 | 15:00 – 19:00</p>
+      <p>Sabato</p>
+      <p style="margin-bottom:8px;">09:00 – 13:00</p>
+      <p>Domenica</p>
+      <p>Chiuso</p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="container">
+      <span>&copy; 2024 Studio Medico — Tutti i diritti riservati</span>
+      <span>
+        <a href="#" onclick="return false;">Privacy Policy</a>
+        &nbsp;·&nbsp;
+        <a href="#" onclick="return false;">Cookie Policy</a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ============================================================
+//  THREE.JS ANIMATED BACKGROUND
+// ============================================================
+(function initThree() {
+  var container = document.getElementById('three-canvas');
+  var scene, camera, renderer, particles = [], mouseX = 0, mouseY = 0;
+
+  function init() {
+    scene = new THREE.Scene();
+
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 14;
+
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    container.appendChild(renderer.domElement);
+
+    // Geometry cache
+    var geos = [
+      new THREE.IcosahedronGeometry(0.25, 0),
+      new THREE.OctahedronGeometry(0.25, 0),
+      new THREE.DodecahedronGeometry(0.23, 0)
+    ];
+
+    var green = new THREE.Color('#2D7D46');
+    var orange = new THREE.Color('#E8803A');
+    var col = new THREE.Color();
+
+    for (var i = 0; i < 200; i++) {
+      var geo = geos[i % 3];
+      var t = Math.random();
+      col.lerpColors(green, orange, t);
+
+      var mat = new THREE.MeshBasicMaterial({
+        color: col,
+        transparent: true,
+        opacity: 0.3 + Math.random() * 0.4,
+        wireframe: Math.random() > 0.5
+      });
+
+      var mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        (Math.random() - 0.5) * 30,
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 15 - 5
+      );
+      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+
+      mesh.userData = {
+        rotSpeed: { x: (Math.random() - 0.5) * 0.01, y: (Math.random() - 0.5) * 0.01, z: (Math.random() - 0.5) * 0.005 },
+        floatAmp: Math.random() * 0.3 + 0.1,
+        floatSpeed: Math.random() * 0.002 + 0.001,
+        floatOffset: Math.random() * Math.PI * 2,
+        initialY: mesh.position.y
+      };
+
+      scene.add(mesh);
+      particles.push(mesh);
+    }
+
+    // Mouse parallax
+    document.addEventListener('mousemove', function(e) {
+      mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+    });
+
+    animate();
+    container.classList.add('loaded');
+  }
+
+  var time = 0;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    time += 0.005;
+
+    // Auto-rotation
+    var groupRot = scene.children.filter(function(c) { return c.isMesh; });
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      p.rotation.x += p.userData.rotSpeed.x;
+      p.rotation.y += p.userData.rotSpeed.y;
+      p.rotation.z += p.userData.rotSpeed.z;
+      // Float
+      p.position.y = p.userData.initialY + Math.sin(time * p.userData.floatSpeed * 100 + p.userData.floatOffset) * p.userData.floatAmp;
+    }
+
+    // Mouse parallax
+    var targetRotX = mouseY * 0.1;
+    var targetRotY = mouseX * 0.15;
+    camera.position.x += (targetRotX - camera.position.x) * 0.02;
+    camera.position.y += (targetRotY - camera.position.y) * 0.02;
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+  }
+
+  // Resize
+  window.addEventListener('resize', function() {
+    if (camera && renderer) {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+  });
+
+  if (typeof THREE !== 'undefined') {
+    init();
+  } else {
+    // Load Three.js dynamically
+    var script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    script.onload = init;
+    document.head.appendChild(script);
+  }
+})();
+
+// ============================================================
+//  HERO CANVAS — Medical Cross with orbiting circles
+// ============================================================
+(function initHeroCanvas() {
+  var canvas = document.getElementById('hero-canvas');
+  if (!canvas || !canvas.getContext) return;
+
+  var ctx = canvas.getContext('2d');
+  var W, H;
+
+  function resize() {
+    var rect = canvas.parentElement.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var size = Math.min(rect.width, rect.height || 500, 500);
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+    W = canvas.width;
+    H = canvas.height;
+    ctx.scale(dpr, dpr);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  var t = 0;
+  var mouseX = 0, mouseY = 0;
+  canvas.addEventListener('mousemove', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    mouseX = (e.clientX - rect.left) / rect.width - 0.5;
+    mouseY = (e.clientY - rect.top) / rect.height - 0.5;
+  });
+  canvas.addEventListener('mouseleave', function() { mouseX = 0; mouseY = 0; });
+
+  function draw() {
+    t += 0.008;
+    var w = canvas.width / (window.devicePixelRatio || 1);
+    var h = canvas.height / (window.devicePixelRatio || 1);
+    ctx.clearRect(0, 0, w, h);
+
+    var cx = w / 2 + mouseX * 30;
+    var cy = h / 2 + mouseY * 20;
+    var size = Math.min(w, h) * 0.35;
+
+    // Glow
+    var grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 1.5);
+    grd.addColorStop(0, 'rgba(45,125,70,0.08)');
+    grd.addColorStop(0.5, 'rgba(232,128,58,0.04)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    // Medical cross
+    var half = size * 0.25;
+    var armW = half * 0.5;
+    var armH = half * 0.35;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.55, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(45,125,70,0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 8]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Rotating orbit rings
+    for (var i = 0; i < 3; i++) {
+      var angle = t * (0.5 + i * 0.3) + i * 2.1;
+      var orbitR = size * (0.4 + i * 0.12);
+      var ox = Math.cos(angle) * orbitR;
+      var oy = Math.sin(angle) * orbitR;
+
+      // Orbit path
+      ctx.beginPath();
+      ctx.ellipse(0, 0, orbitR, orbitR * 0.5, angle * 0.3, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(45,125,70,0.06)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Orbiting dot
+      ctx.beginPath();
+      ctx.arc(ox, oy * 0.5, 4, 0, Math.PI * 2);
+      var grad = ctx.createRadialGradient(ox, oy * 0.5, 0, ox, oy * 0.5, 4);
+      grad.addColorStop(0, '#E8803A');
+      grad.addColorStop(1, 'rgba(232,128,58,0.2)');
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // Cross
+    ctx.fillStyle = 'rgba(45,125,70,0.12)';
+    ctx.shadowColor = 'rgba(45,125,70,0.15)';
+    ctx.shadowBlur = 20;
+
+    // Vertical arm
+    ctx.fillRect(-armW/2, -half, armW, half * 2);
+    // Horizontal arm
+    ctx.fillRect(-half, -armW/2, half * 2, armW);
+
+    ctx.shadowBlur = 0;
+
+    // Cross outline
+    ctx.strokeStyle = 'rgba(45,125,70,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-armW/2, -half, armW, half * 2);
+    ctx.strokeRect(-half, -armW/2, half * 2, armW);
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#E8803A';
+    ctx.fill();
+
+    ctx.restore();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============================================================
+//  PRELOADER
+// ============================================================
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    document.getElementById('preloader').classList.add('hidden');
+  }, 1500);
+});
+
+// ============================================================
+//  NAVBAR SCROLL EFFECT
+// ============================================================
+(function navbarScroll() {
+  var navbar = document.getElementById('navbar');
+  var cta = document.querySelector('.navbar-cta');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 80) {
+      navbar.classList.add('scrolled');
+      if (cta) cta.classList.add('scrolled-cta');
+    } else {
+      navbar.classList.remove('scrolled');
+      if (cta) cta.classList.remove('scrolled-cta');
+    }
+  });
+})();
+
+// ============================================================
+//  MOBILE MENU
+// ============================================================
+(function mobileMenu() {
+  var hamburger = document.getElementById('hamburger');
+  var overlay = document.getElementById('mobileOverlay');
+  var menu = document.getElementById('mobileMenu');
+  var links = menu.querySelectorAll('a');
+
+  function toggle() {
+    hamburger.classList.toggle('active');
+    overlay.classList.toggle('active');
+    menu.classList.toggle('active');
+    document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
+  }
+
+  hamburger.addEventListener('click', toggle);
+  overlay.addEventListener('click', toggle);
+  for (var i = 0; i < links.length; i++) {
+    links[i].addEventListener('click', toggle);
+  }
+})();
+
+// ============================================================
+//  INTERSECTION OBSERVER — Scroll Reveal
+// ============================================================
+(function scrollReveal() {
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+  // Observe doctor cards (created dynamically, observe after DOM update)
+  // Observe timeline items
+  var timelineItems = document.querySelectorAll('.timeline-item');
+  timelineItems.forEach(function(item) { observer.observe(item); });
+
+  // Expose for dynamic elements
+  window.__scrollObserver = observer;
+})();
+
+// ============================================================
+//  COUNTER ANIMATION
+// ============================================================
+(function counters() {
+  var counters = document.querySelectorAll('.counter');
+  var observed = new Set();
+
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting && !observed.has(entry.target)) {
+        observed.add(entry.target);
+        animateCounter(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  counters.forEach(function(c) { observer.observe(c); });
+
+  function animateCounter(el) {
+    var target = parseInt(el.getAttribute('data-target'), 10);
+    var duration = 2000;
+    var startTime = null;
+
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      var progress = Math.min((timestamp - startTime) / duration, 1);
+      // Ease out cubic
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var current = Math.floor(eased * target);
+      el.textContent = current.toLocaleString('it-IT');
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        el.textContent = target.toLocaleString('it-IT');
+      }
+    }
+    requestAnimationFrame(step);
+  }
+})();
+
+// ============================================================
+//  TESTIMONIAL CAROUSEL
+// ============================================================
+(function carousel() {
+  var slides = document.querySelectorAll('.testimonial-slide');
+  var dots = document.querySelectorAll('.testimonial-dot');
+  var current = 0;
+  var interval;
+  var paused = false;
+
+  function goTo(index) {
+    slides.forEach(function(s) { s.classList.remove('active'); });
+    dots.forEach(function(d) { d.classList.remove('active'); });
+    slides[index].classList.add('active');
+    dots[index].classList.add('active');
+    current = index;
+  }
+
+  function next() {
+    goTo((current + 1) % slides.length);
+  }
+
+  function start() {
+    interval = setInterval(function() {
+      if (!paused) next();
+    }, 5000);
+  }
+
+  // Dot clicks
+  dots.forEach(function(dot) {
+    dot.addEventListener('click', function() {
+      goTo(parseInt(dot.getAttribute('data-index'), 10));
+    });
+  });
+
+  // Pause on hover
+  var carousel = document.getElementById('testimonialCarousel');
+  carousel.addEventListener('mouseenter', function() { paused = true; });
+  carousel.addEventListener('mouseleave', function() { paused = false; });
+
+  if (slides.length > 0) start();
+})();
+
+// ============================================================
+//  API HELPER
+// ============================================================
+var API_BASE = '/api';
+
+// Read doctor_id from URL param or sessionStorage
+function getDoctorId() {
+  var params = new URLSearchParams(window.location.search);
+  return params.get('doctor') || sessionStorage.getItem('doctor_id') || 1;
+}
+
+// Store doctor_id
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var docId = params.get('doctor');
+  if (docId) sessionStorage.setItem('doctor_id', docId);
+})();
+
+function apiGet(path) {
+  return fetch(API_BASE + path).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function apiPost(path, data) {
+  return fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+// ============================================================
+//  LOAD DOCTORS
+// ============================================================
+(function loadDoctors() {
+  var grid = document.getElementById('doctorsGrid');
+  var observer = window.__scrollObserver;
+
+  // Show skeleton
+  grid.innerHTML =
+    '<div class="skeleton card"></div>' +
+    '<div class="skeleton card"></div>' +
+    '<div class="skeleton card"></div>';
+
+  apiGet('/doctors').then(function(data) {
+    var doctors = data.doctors || [];
+    if (doctors.length === 0) { doctors = [
+      { id:1, name:'Dr. Mario Rossi', title:'Medicina Generale e Cardiologia', specializations:['Medicina Generale','Cardiologia'], color_theme:'#2563eb', years_experience:20, patients_count:5000 },
+      { id:2, name:'Dr.ssa Laura Bianchi', title:'Dermatologia e Pediatria', specializations:['Dermatologia','Pediatria','Medicina Estetica'], color_theme:'#ec4899', years_experience:15, patients_count:3800 },
+      { id:3, name:'Dr. Giovanni Verdi', title:'Ortopedia e Traumatologia', specializations:['Ortopedia','Fisioterapia','Traumatologia'], color_theme:'#059669', years_experience:18, patients_count:4200 }
+    ]; }
+
+    grid.innerHTML = '';
+    doctors.forEach(function(doc, idx) {
+      var initials = doc.name.split(' ').slice(0,2).map(function(s) { return s[0]; }).join('');
+      var specsHTML = doc.specializations.map(function(s, i) {
+        return '<span class="doc-spec-tag ' + (i % 2 === 0 ? 'green' : 'orange') + '">' + s + '</span>';
+      }).join('');
+
+      var card = document.createElement('div');
+      card.className = 'doctor-card';
+      card.style.borderImage = 'linear-gradient(135deg, ' + (doc.color_theme || '#2D7D46') + ', #E8803A) 1';
+      card.innerHTML =
+        '<div class="doc-avatar-wrapper">' +
+          '<div class="doc-avatar" style="background:' + (doc.color_theme || '#2D7D46') + '">' + initials + '</div>' +
+        '</div>' +
+        '<div class="doctor-name">' + doc.name + '</div>' +
+        '<div class="doctor-title">' + (doc.title || '') + '</div>' +
+        '<div class="doc-specs">' + specsHTML + '</div>' +
+        '<div class="doc-stats">' +
+          '<span>🎓 ' + doc.years_experience + ' anni</span>' +
+          '<span>❤️ ' + doc.patients_count.toLocaleString('it-IT') + ' pazienti</span>' +
+        '</div>' +
+        '<button class="doc-book-btn" data-doctor-id="' + doc.id + '" data-doctor-name="' + doc.name + '">Prenota Visita</button>';
+
+      grid.appendChild(card);
+
+      // Stagger entrance
+      setTimeout(function() {
+        card.classList.add('visible');
+      }, idx * 120);
+    });
+
+    // "Prenota" button click → scroll to appointment and select doctor
+    grid.querySelectorAll('.doc-book-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var docId = btn.getAttribute('data-doctor-id');
+        var docName = btn.getAttribute('data-doctor-name');
+        var select = document.getElementById('bookDoctor');
+        if (select) {
+          for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value == docId) {
+              select.value = docId;
+              break;
+            }
+          }
+        }
+        document.getElementById('appointment').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  }).catch(function(err) {
+    grid.innerHTML =
+      '<div class="error-state">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' +
+        '<p>Impossibile caricare i medici. Riprova più tardi.</p>' +
+        '<button class="retry-btn" onclick="location.reload()">Riprova</button>' +
+      '</div>';
+  });
+})();
+
+// ============================================================
+//  LOAD SERVICES
+// ============================================================
+(function loadServices() {
+  var grid = document.getElementById('servicesGrid');
+  var observer = window.__scrollObserver;
+
+  grid.innerHTML =
+    '<div class="skeleton card" style="transform:skewX(-2deg)"></div>' +
+    '<div class="skeleton card" style="transform:skewX(-2deg)"></div>' +
+    '<div class="skeleton card" style="transform:skewX(-2deg)"></div>';
+
+  // Pre-defined services per doctor
+  var DOCTOR_SERVICES = {
+    1: [
+      { name:'Visita Generale', price:'€50' },
+      { name:'Visita Specialistica', price:'€80' },
+      { name:'Checkup Completo', price:'€120' },
+      { name:'Visita Cardiologica', price:'€100' },
+      { name:'Certificato Medico', price:'€35' },
+      { name:'Consulenza Online', price:'€40' }
+    ],
+    2: [
+      { name:'Visita Dermatologica', price:'€70' },
+      { name:'Checkup Pediatrico', price:'€60' },
+      { name:'Medicina Estetica', price:'€150' },
+      { name:'Patch Test Allergici', price:'€90' },
+      { name:'Consulenza Online', price:'€40' }
+    ],
+    3: [
+      { name:'Visita Ortopedica', price:'€70' },
+      { name:'Seduta di Fisioterapia', price:'€45' },
+      { name:'Traumatologia', price:'€80' },
+      { name:'Terapia Riabilitativa', price:'€55' },
+      { name:'Certificato Sportivo', price:'€40' },
+      { name:'Consulenza Online', price:'€40' }
+    ]
+  };
+
+  apiGet('/doctors').then(function(data) {
+    var doctors = data.doctors || [];
+    if (doctors.length === 0) {
+      doctors = [
+        { id:1, name:'Dr. Mario Rossi', specializations:['Medicina Generale','Cardiologia'] },
+        { id:2, name:'Dr.ssa Laura Bianchi', specializations:['Dermatologia','Pediatria','Medicina Estetica'] },
+        { id:3, name:'Dr. Giovanni Verdi', specializations:['Ortopedia','Fisioterapia','Traumatologia'] }
+      ];
+    }
+
+    grid.innerHTML = '';
+    doctors.forEach(function(doc, idx) {
+      var services = DOCTOR_SERVICES[doc.id] || DOCTOR_SERVICES[1];
+      var itemsHTML = services.map(function(sv) {
+        return '<div class="service-item">' +
+          '<span class="service-item-name">' + sv.name + '</span>' +
+          '<span class="service-item-price">' + sv.price + '</span>' +
+        '</div>';
+      }).join('');
+
+      var col = document.createElement('div');
+      col.className = 'service-column';
+      col.innerHTML =
+        '<div class="service-col-header">' + doc.name + '</div>' +
+        '<div class="service-col-sub">' + (doc.specializations ? doc.specializations[0] : '') + '</div>' +
+        itemsHTML;
+
+      grid.appendChild(col);
+
+      setTimeout(function() {
+        col.classList.add('visible');
+        // Show items with stagger
+        var items = col.querySelectorAll('.service-item');
+        items.forEach(function(item, i) {
+          setTimeout(function() { item.classList.add('visible'); }, i * 80);
+        });
+      }, idx * 150);
+    });
+  }).catch(function() {
+    grid.innerHTML =
+      '<div class="error-state">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' +
+        '<p>Impossibile caricare i servizi. Riprova più tardi.</p>' +
+      '</div>';
+  });
+})();
+
+// ============================================================
+//  LOAD ABOUT / TIMELINE
+// ============================================================
+(function loadAbout() {
+  var timeline = document.getElementById('aboutTimeline');
+  var observer = window.__scrollObserver;
+
+  timeline.innerHTML =
+    '<div style="padding:20px 0">' +
+      '<div class="skeleton text" style="width:70%"></div>' +
+      '<div class="skeleton text-sm"></div>' +
+      '<div class="skeleton text" style="width:50%; margin-top:20px"></div>' +
+      '<div class="skeleton text-sm"></div>' +
+      '<div class="skeleton text" style="width:80%; margin-top:20px"></div>' +
+      '<div class="skeleton text-sm"></div>' +
+    '</div>';
+
+  apiGet('/about?doctor_id=' + getDoctorId()).then(function(data) {
+    var creds = data.credentials || [];
+    if (creds.length === 0) {
+      creds = [
+        { year:2000, title:'Laurea in Medicina e Chirurgia', institution:'Università La Sapienza di Roma' },
+        { year:2005, title:'Specializzazione in Cardiologia', institution:'Università La Sapienza di Roma' },
+        { year:2012, title:'Master in Ecocardiografia', institution:'Università di Bologna' },
+        { year:2018, title:'Fellowship in Cardiologia Interventistica', institution:'University of Oxford' },
+        { year:2023, title:'Introduzione della Telemedicina', institution:'Studio Medico Roma' }
+      ];
+    }
+
+    timeline.innerHTML = '';
+    creds.forEach(function(item, idx) {
+      var div = document.createElement('div');
+      div.className = 'timeline-item';
+      div.innerHTML =
+        '<div class="timeline-dot"></div>' +
+        '<div class="timeline-year">' + item.year + '</div>' +
+        '<div class="timeline-title">' + item.title + '</div>' +
+        '<div class="timeline-inst">' + item.institution + '</div>';
+      timeline.appendChild(div);
+
+      setTimeout(function() {
+        div.classList.add('visible');
+        if (observer) observer.observe(div);
+      }, idx * 100);
+    });
+  }).catch(function() {
+    timeline.innerHTML =
+      '<div class="error-state" style="text-align:left; padding:20px 0">' +
+        '<p style="color:#8A9A8A">Impossibile caricare. Riprova più tardi.</p>' +
+      '</div>';
+  });
+})();
+
+// ============================================================
+//  POPULATE APPOINTMENT FORM DROPDOWNS
+// ============================================================
+(function populateBookingForm() {
+  var doctorSelect = document.getElementById('bookDoctor');
+  var serviceSelect = document.getElementById('bookService');
+
+  apiGet('/doctors').then(function(data) {
+    var doctors = data.doctors || [];
+    if (doctors.length === 0) {
+      doctors = [
+        { id:1, name:'Dr. Mario Rossi' },
+        { id:2, name:'Dr.ssa Laura Bianchi' },
+        { id:3, name:'Dr. Giovanni Verdi' }
+      ];
+    }
+    doctors.forEach(function(doc) {
+      var opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = doc.name;
+      doctorSelect.appendChild(opt);
+    });
+  }).catch(function() {
+    var opt = document.createElement('option');
+    opt.value = '1';
+    opt.textContent = 'Dr. Mario Rossi';
+    doctorSelect.appendChild(opt);
+    doctorSelect.appendChild(new Option('Dr.ssa Laura Bianchi', '2'));
+    doctorSelect.appendChild(new Option('Dr. Giovanni Verdi', '3'));
+  });
+
+  var DOCTOR_SERVICES = {
+    1: [
+      { id:1, name:'Visita Generale', price:50 },
+      { id:2, name:'Visita Specialistica', price:80 },
+      { id:3, name:'Checkup Completo', price:120 },
+      { id:4, name:'Visita Cardiologica', price:100 },
+      { id:5, name:'Certificato Medico', price:35 },
+      { id:6, name:'Consulenza Online', price:40 }
+    ],
+    2: [
+      { id:1, name:'Visita Dermatologica', price:70 },
+      { id:2, name:'Checkup Pediatrico', price:60 },
+      { id:3, name:'Medicina Estetica', price:150 },
+      { id:4, name:'Patch Test Allergici', price:90 },
+      { id:5, name:'Consulenza Online', price:40 }
+    ],
+    3: [
+      { id:1, name:'Visita Ortopedica', price:70 },
+      { id:2, name:'Seduta di Fisioterapia', price:45 },
+      { id:3, name:'Traumatologia', price:80 },
+      { id:4, name:'Terapia Riabilitativa', price:55 },
+      { id:5, name:'Certificato Sportivo', price:40 },
+      { id:6, name:'Consulenza Online', price:40 }
+    ]
+  };
+
+  doctorSelect.addEventListener('change', function() {
+    var docId = parseInt(this.value, 10);
+    var services = DOCTOR_SERVICES[docId] || DOCTOR_SERVICES[1];
+    serviceSelect.innerHTML = '<option value="">Seleziona un servizio</option>';
+    services.forEach(function(sv) {
+      var opt = document.createElement('option');
+      opt.value = sv.id;
+      opt.textContent = sv.name + ' — €' + sv.price;
+      serviceSelect.appendChild(opt);
+    });
+  });
+
+  // Set min date to today
+  var today = new Date();
+  var yyyy = today.getFullYear();
+  var mm = String(today.getMonth() + 1).padStart(2, '0');
+  var dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('bookDate').setAttribute('min', yyyy + '-' + mm + '-' + dd);
+})();
+
+// ============================================================
+//  BOOKING FORM SUBMISSION
+// ============================================================
+(function bookingForm() {
+  var form = document.getElementById('bookingForm');
+  var submitBtn = document.getElementById('bookingSubmit');
+  var successDiv = document.getElementById('bookingSuccess');
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    submitBtn.classList.add('loading');
+    submitBtn.disabled = true;
+
+    var data = {
+      doctor_id: parseInt(document.getElementById('bookDoctor').value, 10),
+      service: document.getElementById('bookService').value,
+      date: document.getElementById('bookDate').value,
+      time: document.getElementById('bookTime').value,
+      name: document.getElementById('bookName').value,
+      email: document.getElementById('bookEmail').value,
+      phone: document.getElementById('bookPhone').value,
+      notes: document.getElementById('bookNotes').value
+    };
+
+    apiPost('/booking', data).then(function(resp) {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+      form.style.display = 'none';
+      successDiv.classList.add('show');
+      setTimeout(function() {
+        successDiv.classList.remove('show');
+        form.style.display = '';
+        form.reset();
+      }, 4000);
+    }).catch(function() {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+      alert('Errore durante la prenotazione. Riprova più tardi.');
+    });
+  });
+})();
+
+// ============================================================
+//  CONTACT FORM SUBMISSION
+// ============================================================
+(function contactForm() {
+  var form = document.getElementById('contactForm');
+  var submitBtn = document.getElementById('contactSubmit');
+  var successDiv = document.getElementById('contactSuccess');
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    submitBtn.classList.add('loading');
+    submitBtn.disabled = true;
+
+    var data = {
+      name: document.getElementById('contactName').value,
+      email: document.getElementById('contactEmail').value,
+      subject: document.getElementById('contactSubject').value,
+      message: document.getElementById('contactMessage').value
+    };
+
+    apiPost('/contact', data).then(function() {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+      form.style.display = 'none';
+      successDiv.classList.add('show');
+      setTimeout(function() {
+        successDiv.classList.remove('show');
+        form.style.display = '';
+        form.reset();
+      }, 4000);
+    }).catch(function() {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+      alert('Errore durante l\'invio del messaggio. Riprova più tardi.');
+    });
+  });
+})();
+
+// ============================================================
+//  SET TODAY'S DATE IN DATE INPUT
+// ============================================================
+(function setDefaultDate() {
+  var dateInput = document.getElementById('bookDate');
+  if (dateInput) {
+    var today = new Date();
+    var yyyy = today.getFullYear();
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = yyyy + '-' + mm + '-' + dd;
+  }
+})();
+
+// ============================================================
+//  LEAFLET MAP — DOCTOR LOCATIONS
+// ============================================================
+(function initDoctorMap() {
+  var mapContainer = document.getElementById('doctorMap');
+  if (!mapContainer) return;
+
+  var map = L.map('doctorMap').setView([41.9000, 12.4920], 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 18
+  }).addTo(map);
+
+  var doctors = [
+    {
+      name: 'Dr. Mario Rossi',
+      address: 'Via Roma 1, 00100 Roma',
+      phone: '+39 06 1234 5678',
+      lat: 41.9028, lng: 12.4964,
+      color: '#2563eb'
+    },
+    {
+      name: 'Dr.ssa Laura Bianchi',
+      address: 'Via Garibaldi 45, 00100 Roma',
+      phone: '+39 06 1234 5678',
+      lat: 41.8950, lng: 12.4780,
+      color: '#ec4899'
+    },
+    {
+      name: 'Dr. Giovanni Verdi',
+      address: 'Via Nazionale 120, 00100 Roma',
+      phone: '+39 06 1234 5678',
+      lat: 41.9010, lng: 12.5030,
+      color: '#059669'
+    }
+  ];
+
+  var markers = [];
+
+  doctors.forEach(function(doc, i) {
+    var iconHtml = '<div style="background:' + doc.color + ';width:20px;height:20px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>';
+
+    var marker = L.marker([doc.lat, doc.lng], {
+      icon: L.divIcon({
+        html: iconHtml,
+        className: '',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      })
+    }).addTo(map);
+
+    marker.bindPopup(
+      '<h4>' + doc.name + '</h4>' +
+      '<p>' + doc.address + '<br>' + doc.phone + '</p>'
+    );
+
+    markers.push(marker);
+  });
+
+  // Expose focusDoctor globally so onclick works
+  window.focusDoctor = function(index) {
+    if (index >= 0 && index < markers.length) {
+      map.setView([doctors[index].lat, doctors[index].lng], 16, { animate: true });
+      markers[index].openPopup();
+    }
+  };
+})();
+</script>
+
+<!-- Three.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- Smooth scroll polyfill for Safari -->
+<script>
+  document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
+</script>
+
+<script src="/static/chat-widget.js"></script>
+</body>
 </html>

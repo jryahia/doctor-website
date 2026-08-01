@@ -1,9 +1,18 @@
+import sys
+
+# Ensure UTF-8 stdout/stderr so emoji in log lines don't crash on Windows (cp1252).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from database import init_db
+from database import init_db, init_doctors
 from router import router
 from config import settings
 
@@ -11,6 +20,7 @@ from config import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    init_doctors()
     yield
 
 
