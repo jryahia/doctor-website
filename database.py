@@ -134,7 +134,7 @@ def init_doctors():
             db.add(doctor)
 
         db.commit()
-        print("✅ Seeded 3 doctors into the database.")
+        print(" Seeded 3 doctors into the database.")
     finally:
         db.close()
 

@@ -73,7 +73,7 @@ REGOLE STRICT (rispettale SEMPRE):
                 f"Ha raggiunto il limite massimo di {self.MAX_QUESTIONS} domande per questa conversazione. "
                 f"Se ha bisogno di ulteriore assistenza, La invitiamo a contattare lo studio "
                 f"al {doctor_info['phone']} o via email a {doctor_info['email']}. "
-                "Grazie per averci contattato! 🏥"
+                "Grazie per averci contattato! "
             )
 
         client = await self._get_client()

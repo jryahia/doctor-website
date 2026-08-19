@@ -2325,8 +2325,8 @@ function apiPost(path, data) {
         '<div class="doctor-title">' + (doc.title || '') + '</div>' +
         '<div class="doc-specs">' + specsHTML + '</div>' +
         '<div class="doc-stats">' +
-          '<span>🎓 ' + doc.years_experience + ' anni</span>' +
-          '<span>❤️ ' + doc.patients_count.toLocaleString('it-IT') + ' pazienti</span>' +
+          '<span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" /> <path d="M22 10v6" /> <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" /></svg> ' + doc.years_experience + ' anni</span>' +
+          '<span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg> ' + doc.patients_count.toLocaleString('it-IT') + ' pazienti</span>' +
         '</div>' +
         '<button class="doc-book-btn" data-doctor-id="' + doc.id + '" data-doctor-name="' + doc.name + '">Prenota Visita</button>';
 
